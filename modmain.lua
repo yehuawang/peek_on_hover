@@ -46,13 +46,12 @@ local function ShowContainerContents(container)
         return
     end
 
-    local contents = container.components.container:GetItems()
-    Log("Container contents: " .. tostring(contents))
+    local contents = container.components.container.slots or {}
+    Log("contents table id:" .. tostring(contents) .. " contains: " .. #contents .. " filled slots.")
 
-    -- implement the logic to display the contents in a UI
-    -- for _, item in ipairs(contents) do
-    --     Log("Item: " .. (item and item.prefab or "nil"))
-    -- end
+    for slot, item in pairs(contents) do
+            Log("Slot " .. slot .. ": " .. (item.prefab or "unknown prefab") .. " x" .. (item.components.stackable and item.components.stackable:StackSize() or 1))
+    end
 end
 
 -- light weight version of update check
