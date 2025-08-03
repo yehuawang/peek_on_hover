@@ -1,7 +1,7 @@
 name = "Peek on Hover"
 description = "Shows a preview of the item when alt + hovering over a container."
 author = "Cangyao"
-version = "0.0.5"
+version = "0.0.6"
 
 api_version = 10
 
