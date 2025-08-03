@@ -1,5 +1,8 @@
 # Peek on Hover Changelog
 
+## [0.2.0]
+- fixed Register client RPC handler to AddClientModRPCHandler(..)
+- will be working on formulate correct information to send to client... container:GetItemSlot() and other functions not exists (but did not find where they are)
 
 ## [0.1.0]
 - converted to server based mod
