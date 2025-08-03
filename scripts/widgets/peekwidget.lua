@@ -1,51 +1,100 @@
 local Widget = require "widgets/widget"
 local Image = require "widgets/image"
+local Text = require "widgets/text"
 
--- PeekWidget will take widgetslotpos from container.components.container.widgetslotpos
--- and draw empty placeholder slots at the same positions.
+-- PeekWidget
+-- Shows a non-interactive UI grid for container slots
 
-local PeekWidget = Class(Widget, function(self, widgetslotpos)
+local PeekWidget = Class(Widget, function(self, layout)
     Widget._ctor(self, "PeekWidget")
 
-    -- Background panel (ugly black rectangle for now)
-    self.bg = self:AddChild(Image("images/global.xml", "square.tex"))
-    self.bg:SetTint(0, 0, 0, 0.5)        -- semi-transparent black
-    self.bg:SetSize(400, 400)            -- oversized background; will tweak later
+    -- Semi-transparent background for the whole grid (optional)
+    self.bg = self:AddChild(Image("images/hud.xml", "craftingslot_bg.tex"))
+    self.bg:SetScale(2.2, 2.2)
+    self.bg:SetTint(1, 1, 1, 0.5) -- half transparent white
 
     self.slots = {}
+    self.layout = layout
 
-    if widgetslotpos and #widgetslotpos > 0 then
-        -- Determine bounding box for all slot positions to center background nicely
-        local min_x, max_x = 9999, -9999
-        local min_y, max_y = 9999, -9999
+    -- Build slot positions from layout
+    for i, pos in ipairs(layout) do
+        local slot = {}
 
-        for _, pos in ipairs(widgetslotpos) do
-            if pos.x < min_x then min_x = pos.x end
-            if pos.x > max_x then max_x = pos.x end
-            if pos.y < min_y then min_y = pos.y end
-            if pos.y > max_y then max_y = pos.y end
-        end
+        -- Background slot image
+        slot.bg = self:AddChild(Image("images/hud.xml", "inventory_bg.tex"))
+        slot.bg:SetPosition(pos.x, pos.y, 0)
+        slot.bg:SetScale(1.2)
 
-        local width = (max_x - min_x) + 80   -- add padding around slots
-        local height = (max_y - min_y) + 80
-        self.bg:SetSize(width, height)
+        -- Store slot reference for later population
+        slot.icon = nil
+        slot.stacktext = nil
+        slot.overlay = nil
 
-        -- Add slot placeholders
-        for _, pos in ipairs(widgetslotpos) do
-            local slot = self:AddChild(Image("images/global.xml", "square.tex"))
-            slot:SetSize(64, 64)                -- placeholder slot size
-            slot:SetPosition(pos.x, pos.y, 0)   -- use the container’s real slot position
-            slot:SetTint(1, 1, 1, 0.25)         -- light gray transparent
-            table.insert(self.slots, slot)
-        end
-    else
-        -- No layout found (fallback)
-        print("[PEEK ON HOVER] WARNING: widgetslotpos missing, drawing one big gray box.")
-        local slot = self:AddChild(Image("images/global.xml", "square.tex"))
-        slot:SetSize(64, 64)
-        slot:SetTint(1, 0, 0, 0.5)  -- red so you notice it’s wrong
-        table.insert(self.slots, slot)
+        self.slots[i] = slot
     end
 end)
+
+--------------------------------------------------------
+-- FUNCTION: Populate slot images & text
+--------------------------------------------------------
+function PeekWidget:Populate(slotdata)
+    for i, slot in ipairs(self.slots) do
+        -- Clean previous icons/text
+        if slot.icon then
+            slot.icon:Kill()
+            slot.icon = nil
+        end
+        if slot.stacktext then
+            slot.stacktext:Kill()
+            slot.stacktext = nil
+        end
+        if slot.overlay then
+            slot.overlay:Kill()
+            slot.overlay = nil
+        end
+
+        -- Get item info for this slot
+        local data = slotdata[i]
+        if data then
+            -------------------------------------------------
+            -- ICON (item picture)
+            -------------------------------------------------
+            slot.icon = self:AddChild(Image(
+                "images/inventoryimages/"..data.prefab..".xml",
+                data.prefab..".tex"
+            ))
+            slot.icon:SetPosition(slot.bg:GetPosition())
+            slot.icon:SetScale(1.1)
+
+            -------------------------------------------------
+            -- STACK SIZE
+            -------------------------------------------------
+            if data.stacksize and data.stacksize > 1 then
+                slot.stacktext = self:AddChild(Text(DEFAULTFONT, 26))
+                slot.stacktext:SetPosition(slot.bg:GetPosition() + Vector3(16, -16, 0))
+                slot.stacktext:SetString(tostring(data.stacksize))
+                slot.stacktext:SetColour(1, 1, 1, 1)
+            end
+
+            -------------------------------------------------
+            -- OVERLAY for durability / freshness
+            -------------------------------------------------
+            -- (Just shows a green/yellow bar for now)
+            local percent = data.freshness or data.durability or data.armor or data.fuel
+            if percent then
+                slot.overlay = self:AddChild(Image("images/hud.xml", "inventory_bg.tex"))
+                slot.overlay:SetPosition(slot.bg:GetPosition() + Vector3(0, -25, 0))
+                slot.overlay:SetSize(32 * percent, 4)  -- make the bar scale with percent
+                if data.freshness then
+                    slot.overlay:SetTint(0, 1, 0, 1)  -- green
+                elseif data.durability or data.armor then
+                    slot.overlay:SetTint(1, 1, 0, 1)  -- yellow
+                elseif data.fuel then
+                    slot.overlay:SetTint(0, 0.5, 1, 1)  -- blue
+                end
+            end
+        end
+    end
+end
 
 return PeekWidget
